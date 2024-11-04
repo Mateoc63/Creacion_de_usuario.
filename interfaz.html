@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="interfaz.css"> <!-- etiqueta donde llamamos al archivo CSS -->
+    <title>Gestor de Usuarios</title>
+</head>
+<body>
+<div class="contenedor">
+    <div class="Titulo">
+        <h2>Lista de Usuarios</h2>
+    </div>
+
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Buscar usuarios...">
+    </div>
+
+    <div class="users">
+        <table>
+            <thead>
+            <tr><!--<th>Seleccionador</th>-->
+                <th>ID</th>
+                <th>Usuario</th>
+                <th>Rol</th>
+            </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+    <div class="user-management">
+        <button onclick="nuevo()">Nuevo</button>
+    </div>
+</div>
+
+<script>
+    function nuevo() {
+        window.location.href = "/sistema_login/gestion/register";
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        fetch('/sistema_abm/users', {
+            method: 'GET',
+            credentials: 'include' // Incluir cookies en la solicitud
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error al obtener los usuarios');
+                }
+                return response.json();
+            })
+            .then(usuarios => {
+                const tbody = document.querySelector('.users table tbody');
+                tbody.innerHTML = '';
+                usuarios.forEach(usuario => {
+                    const tr = document.createElement('tr');
+
+                    const tdId = document.createElement('td');
+                    tdId.textContent = usuario.id;
+                    tr.appendChild(tdId);
+
+                    const tdUsuario = document.createElement('td');
+                    const link = document.createElement('a');
+                    link.href = `/sistema_login/gestion/${usuario.id}`;
+                    link.textContent = usuario.name;
+                    tdUsuario.appendChild(link);
+                    tr.appendChild(tdUsuario);
+
+                    const tdRol = document.createElement('td');
+                    tdRol.textContent = usuario.rol;
+                    tr.appendChild(tdRol);
+
+                    tbody.appendChild(tr);
+                });
+
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    searchInput.addEventListener('input', function() {
+                        const searchTerm = this.value.toLowerCase();
+                        filterUsers(searchTerm);
+                    });
+                }
+
+                function filterUsers(term) {
+                    const rows = tbody.querySelectorAll('tr');
+                    rows.forEach(row => {
+                        const userName = row.querySelector('td:nth-child(2) a').textContent.toLowerCase();
+                        if (userName.includes(term)) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error al procesar los usuarios:', error);
+            });
+    });
+
+    document.getElementById('registerForm').addEventListener('submit', function(event) {
+        event.preventDefault(); // Evita que el formulario se envíe de la forma tradicional
+
+        // Obtiene los datos del formulario
+        const formData = new FormData(this);
+        const data = {};
+        formData.forEach((value, key) => {
+            data[key] = value;
+        });
+
+        // Envía los datos del formulario en formato JSON usando fetch
+        fetch('/sistema_abm/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include', // Incluir cookies en la solicitud
+            body: JSON.stringify(data)
+        })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('Error en el registro');
+                }
+            })
+            .then(data => {
+                console.log('Registro exitoso:', data);
+                // Redirigir a /sistema_login/gestion después del registro exitoso
+                window.location.href = '/sistema_login/gestion';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Mostrar mensaje de error
+            });
+    });
+</script>
+
+</body>
+</html>

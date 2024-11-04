@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión de Usuario</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .error-message {
+            background-color: rgba(255, 0, 0, 0.8); /* Fondo rojo más sólido */
+            color: white; /* Texto blanco */
+            border: 2px solid #FF6347; /* Borde naranja */
+            border-radius: 10px; /* Bordes redondeados */
+            padding: 15px; /* Espaciado interno */
+            margin-top: 15px; /* Espacio superior */
+            text-align: center; /* Texto centrado */
+            width: 100%; /* Ancho completo */
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3); /* Sombra suave */
+            display: none; /* Ocultar el mensaje por defecto */
+        }
+    </style>
+</head>
+<body>
+<section>
+    <!-- Div para dividir el contenido -->
+    <div class="contenedor">
+        <!-- Div para darle características al formulario -->
+        <div class="formulario">
+            <!-- Formulario HTML para enviar datos -->
+            <form id="userForm">
+                <h2>Gestión de Usuario</h2>
+                <!-- Contenedor del input para el nombre de usuario -->
+                <div class="input-contenedor">
+                    <input type="text" id="username" name="username" required>
+                    <label for="username">Nombre de usuario</label>
+                </div>
+
+                <!-- Contenedor del select para el rol -->
+                <div class="input-contenedor">
+                    <select id="role" name="role" required>
+                        <option value="" disabled selected></option>
+                        <option value="ADMIN">ADMIN</option>
+                        <option value="PROFESSOR">PROFESOR</option>
+                        <option value="STUDENT">ESTUDIANTE</option>
+                    </select>
+                    <label for="role">Rol</label>
+                </div>
+                <!-- Contenedor para el mensaje de error -->
+                <div class="error-message" id="errorMessage">
+                    Nombre de usuario ya utilizado
+                </div>
+                <!-- Contenedor para los botones -->
+                <div class="button-container">
+                    <button type="button" id="updateButton">Actualizar</button>
+                    <button type="button" id="deleteButton" data-confirm="false">Eliminar</button>
+                </div>
+            </form>
+            <!-- Enlace para volver a la página anterior -->
+            <div class="registrar">
+                <p><a href="/sistema_login/gestion">Volver</a></p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Agregue el script aquí para manejar la obtención, actualización y eliminación del usuario -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const userId = window.location.pathname.split('/').pop();
+        let countdownInterval;
+
+        // Función para mostrar el mensaje de error
+        function showErrorMessage(message) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block'; // Mostrar el mensaje de error
+        }
+
+        // Función para ocultar el mensaje de error
+        function hideErrorMessage() {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.style.display = 'none'; // Ocultar el mensaje de error
+        }
+
+        // Obtener datos del usuario
+        fetch(`/sistema_abm/users/${userId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error al obtener los datos del usuario');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data) {
+                    document.getElementById('username').value = data.name || '';
+                    document.getElementById('role').value = data.rol || '';
+                }
+            })
+            .catch(error => {
+                console.error('Error al obtener los datos del usuario:', error);
+            });
+
+        // Manejar la actualización del usuario
+        document.getElementById('updateButton').addEventListener('click', function() {
+            const name = document.getElementById('username').value;
+            const rol = document.getElementById('role').value;
+
+            const updateUser = { id: parseInt(userId), name, rol };
+
+            fetch(`/sistema_abm/users/${userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updateUser)
+            })
+                .then(response => {
+                    if (response.ok) {
+                        hideErrorMessage(); // Ocultar el mensaje de error si se actualiza correctamente
+                        window.location.href = '/sistema_login/gestion'; // Redirigir después de la actualización
+                    } else if (response.status === 409) {
+                        // Conflict: Nombre de usuario ya utilizado
+                        showErrorMessage('Nombre de usuario ya utilizado');
+                    } else {
+                        throw new Error('Error al actualizar el usuario');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al actualizar el usuario:', error);
+                });
+        });
+
+        // Manejar la eliminación del usuario
+        document.getElementById('deleteButton').addEventListener('click', function() {
+            const confirmState = this.getAttribute('data-confirm');
+
+            if (confirmState === 'false') {
+                let countdown = 3;
+                this.innerText = `¿Está seguro? (${countdown})`;
+                this.setAttribute('data-confirm', 'true');
+                this.disabled = true; // Deshabilitar el botón durante la cuenta regresiva
+
+                countdownInterval = setInterval(() => {
+                    countdown -= 1;
+                    if (countdown > 0) {
+                        this.innerText = `¿Está seguro? (${countdown})`;
+                    } else {
+                        clearInterval(countdownInterval);
+                        this.innerText = '¿Está seguro?';
+                        this.disabled = false; // Volver a habilitar el botón
+                    }
+                }, 1000);
+            } else {
+                fetch(`/sistema_abm/users/${userId}`, {
+                    method: 'DELETE'
+                })
+                    .then(response => {
+                        if (response.ok) {
+                            window.location.href = '/sistema_login/gestion';
+                        } else {
+                            throw new Error('Error al eliminar el usuario');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            }
+        });
+    });
+</script>
+</body>
+</html>
